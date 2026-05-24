@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Logic Match</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    min-height:100vh;
+}
+
+.screen{
+    display:none;
+    min-height:100vh;
+    padding:20px;
+}
+
+.active{
+    display:block;
+}
+
+.container{
+    max-width:500px;
+    margin:auto;
+}
+
+.title{
+    text-align:center;
+    font-size:40px;
+    font-weight:bold;
+    color:#e8d28f;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#b7c4db;
+    margin-bottom:25px;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    margin-bottom:15px;
+    border:none;
+    border-radius:8px;
+    background:#243447;
+    color:white;
+    font-size:15px;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    margin-top:10px;
+    cursor:pointer;
+    font-weight:bold;
+    color:white;
+    transition:0.2s;
+}
+
+button:hover{
+    transform:scale(1.02);
+}
+
+.green{
+    background:#2f9e44;
+}
+
+.blue{
+    background:#2563eb;
+}
+
+.gray{
+    background:#475569;
+}
+
+.red{
+    background:#dc2626;
+}
+
+.card-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:20px;
+}
+
+.card{
+    background:#2563eb;
+    padding:18px 10px;
+    border-radius:10px;
+    text-align:center;
+    cursor:pointer;
+    user-select:none;
+    transition:0.2s;
+    font-size:14px;
+    min-height:70px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.card.selected{
+    background:#f59e0b;
+}
+
+.card.matched{
+    background:#16a34a;
+    pointer-events:none;
+}
+
+.card.wrong{
+    background:#dc2626;
+}
+
+button:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+    transform:none;
+}
+
+.info{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:15px;
+}
+
+.info-box{
+    background:#1e293b;
+    padding:10px;
+    border-radius:10px;
+    text-align:center;
+}
+
+.instructions{
+    background:#1e293b;
+    padding:15px;
+    border-radius:10px;
+    line-height:1.7;
+    margin-bottom:20px;
+}
+
+.leaderboard-item{
+    display:flex;
+    justify-content:space-between;
+    background:#1e293b;
+    padding:12px;
+    margin-top:8px;
+    border-radius:8px;
+}
+
+.loading{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.7);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+}
+
+.spinner{
+    width:70px;
+    height:70px;
+    border:6px solid #e8d28f;
+    border-top:6px solid transparent;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+    to{
+        transform:rotate(360deg);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="loading" id="loading">
+    <div class="spinner"></div>
+</div>
+
+<!-- REGISTER -->
+<div class="screen active" id="registerScreen">
+    <div class="container">
+        <div class="title">LOGIC MATCH</div>
+        <div class="subtitle">CREATE ACCOUNT</div>
+
+        <input type="email" id="regEmail" placeholder="Email">
+        <input type="text" id="regUsername" placeholder="Username">
+        <input type="password" id="regPassword" placeholder="Password">
+        <input type="password" id="regConfirm" placeholder="Confirm Password">
+
+        <button class="green" onclick="register()">REGISTER</button>
+        <button class="gray" onclick="showScreen('loginScreen')">
+            Already have account? Login
+        </button>
+    </div>
+</div>
+
+<!-- LOGIN -->
+<div class="screen" id="loginScreen">
+    <div class="container">
+        <div class="title">LOGIC MATCH</div>
+        <div class="subtitle">LOGIN</div>
+
+        <input type="text" id="loginUser" placeholder="Username or Email">
+        <input type="password" id="loginPass" placeholder="Password">
+
+        <button class="green" onclick="login()">LOGIN</button>
+        <button class="blue" onclick="guestLogin()">CONTINUE AS GUEST</button>
+        <button class="gray" onclick="showScreen('registerScreen')">
+            Register
+        </button>
+    </div>
+</div>
+
+<!-- MENU -->
+<div class="screen" id="menuScreen">
+    <div class="container">
+        <div class="title">LOGIC MATCH</div>
+        <div class="subtitle" id="welcomeText"></div>
+
+        <div class="instructions">
+            <b>HOW TO PLAY</b><br><br>
+            1. Tap card to select<br>
+            2. Tap matching card<br>
+            3. Match logical pairs<br>
+            4. Finish before time ends<br>
+            5. Correct: +100<br>
+            6. Wrong: -25
+        </div>
+
+        <button class="green" onclick="startGame()">START GAME</button>
+        <button class="blue" onclick="showLeaderboard()">LEADERBOARD</button>
+        <button class="red" onclick="logout()">LOGOUT</button>
+    </div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="gameScreen">
+    <div class="container">
+
+        <div class="info">
+            <div class="info-box" id="scoreBox">Score: 0</div>
+            <div class="info-box" id="timeBox">Time: 60</div>
+            <div class="info-box" id="levelBox">Level: 1</div>
+            <div class="info-box" id="pairBox">Pairs: 0</div>
+        </div>
+
+        <div class="instructions" id="themeBox"></div>
+
+        <div class="card-grid" id="cardGrid"></div>
+
+        <button class="gray" onclick="resetLevel()">RESET</button>
+        <button class="green" id="nextBtn" onclick="nextLevel()" disabled>NEXT</button>
+        <button class="red" onclick="backMenu()">MENU</button>
+
+    </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="screen" id="leaderboardScreen">
+    <div class="container">
+        <div class="title">LEADERBOARD</div>
+
+        <div id="leaderboardList"></div>
+
+        <button class="gray" onclick="showScreen('menuScreen')">
+            BACK
+        </button>
+    </div>
+</div>
+
+<script>
+let currentUser = "Guest";
+let score = 0;
+let level = 1;
+let selectedCard = null;
+let matchedPairs = 0;
+let timer = 60;
+let interval;
+let levelComplete = false;
+
+const levels = {
+    1:{
+        theme:"Basic Definitions",
+        pairs:[
+            ["Water","H2O"],
+            ["Oxygen","O2"],
+            ["Salt","NaCl"],
+            ["Carbon Dioxide","CO2"],
+            ["Hydrogen","H2"],
+            ["Nitrogen","N2"]
+        ]
+    },
+    2:{
+        theme:"Opposites",
+        pairs:[
+            ["Hot","Cold"],
+            ["Big","Small"],
+            ["Fast","Slow"],
+            ["Light","Dark"],
+            ["High","Low"],
+            ["Young","Old"]
+        ]
+    },
+    3:{
+        theme:"Shapes",
+        pairs:[
+            ["Circle","Round"],
+            ["Square","Four sides"],
+            ["Triangle","Three sides"],
+            ["Rectangle","Four angles"],
+            ["Oval","Ellipse"],
+            ["Hexagon","Six sides"]
+        ]
+    },
+    4:{
+        theme:"Professions",
+        pairs:[
+            ["Doctor","Heals"],
+            ["Teacher","Teaches"],
+            ["Chef","Cooks"],
+            ["Pilot","Flies"],
+            ["Engineer","Builds"],
+            ["Artist","Paints"]
+        ]
+    },
+    5:{
+        theme:"Units",
+        pairs:[
+            ["Meter","Length"],
+            ["Gram","Mass"],
+            ["Second","Time"],
+            ["Liter","Volume"],
+            ["Celsius","Temperature"],
+            ["Joule","Energy"]
+        ]
+    },
+    6:{
+        theme:"Cause & Effect",
+        pairs:[
+            ["Rain","Wet"],
+            ["Fire","Smoke"],
+            ["Wind","Move"],
+            ["Sun","Light"],
+            ["Snow","Cold"],
+            ["Earthquake","Shake"],
+            ["Volcano","Lava"]
+        ]
+    },
+    7:{
+        theme:"Math Operations",
+        pairs:[
+            ["Add","Sum"],
+            ["Multiply","Product"],
+            ["Divide","Quotient"],
+            ["Subtract","Difference"],
+            ["Square","Power 2"],
+            ["Root","Inverse square"],
+            ["Percent","Per hundred"]
+        ]
+    },
+    8:{
+        theme:"Scientists",
+        pairs:[
+            ["Einstein","Relativity"],
+            ["Newton","Gravity"],
+            ["Galileo","Telescope"],
+            ["Darwin","Evolution"],
+            ["Curie","Radioactivity"],
+            ["Tesla","AC Current"],
+            ["Hawking","Black Holes"]
+        ]
+    },
+    9:{
+        theme:"Time Sequences",
+        pairs:[
+            ["Monday","Day 1"],
+            ["January","Month 1"],
+            ["Spring","Season 1"],
+            ["Dawn","Morning"],
+            ["Dusk","Evening"],
+            ["Hour","60 mins"],
+            ["Minute","60 secs"]
+        ]
+    },
+    10:{
+        theme:"Elements",
+        pairs:[
+            ["Gold","Au"],
+            ["Silver","Ag"],
+            ["Iron","Fe"],
+            ["Copper","Cu"],
+            ["Lead","Pb"],
+            ["Tin","Sn"],
+            ["Zinc","Zn"]
+        ]
+    },
+    11:{
+        theme:"Animal Movements",
+        pairs:[
+            ["Bird","Flies"],
+            ["Fish","Swims"],
+            ["Snake","Slithers"],
+            ["Kangaroo","Jumps"],
+            ["Cheetah","Runs"],
+            ["Eagle","Soars"],
+            ["Dolphin","Leaps"],
+            ["Frog","Hops"]
+        ]
+    },
+    12:{
+        theme:"Equations",
+        pairs:[
+            ["E=mc^2","Energy"],
+            ["F=ma","Force"],
+            ["a^2+b^2=c^2","Pythagoras"],
+            ["PV=nRT","Gas Law"],
+            ["V=IR","Ohm's Law"],
+            ["E=hf","Planck"],
+            ["F=Gm1m2/r^2","Gravity"],
+            ["KE=1/2mv^2","Kinetic"]
+        ]
+    },
+    13:{
+        theme:"Programming",
+        pairs:[
+            ["Variable","Stores data"],
+            ["Function","Reusable"],
+            ["Loop","Repeats"],
+            ["If","Decision"],
+            ["Array","List"],
+            ["Class","Blueprint"],
+            ["Object","Instance"],
+            ["String","Text"]
+        ]
+    },
+    14:{
+        theme:"Philosophers",
+        pairs:[
+            ["Plato","Forms"],
+            ["Aristotle","Logic"],
+            ["Socrates","Method"],
+            ["Descartes","Cogito"],
+            ["Kant","Categorical"],
+            ["Nietzsche","Ubermensch"],
+            ["Confucius","Wisdom"],
+            ["Lao Tzu","Tao"]
+        ]
+    },
+    15:{
+        theme:"Human Body",
+        pairs:[
+            ["Heart","Pumps"],
+            ["Lungs","Breathe"],
+            ["Brain","Thinks"],
+            ["Liver","Filters"],
+            ["Kidney","Cleans"],
+            ["Stomach","Digests"],
+            ["Skin","Protects"],
+            ["Bones","Supports"]
+        ]
+    },
+    16:{
+        theme:"Number Patterns",
+        pairs:[
+            ["2,4,6,8","Even"],
+            ["1,3,5,7","Odd"],
+            ["2,4,8,16","Powers of 2"],
+            ["1,4,9,16","Squares"],
+            ["1,3,6,10","Triangular"],
+            ["2,3,5,7","Prime"],
+            ["1,1,2,3","Fibonacci"],
+            ["1,8,27,64","Cubes"],
+            ["0,1,2,3","Whole"]
+        ]
+    },
+    17:{
+        theme:"Music Theory",
+        pairs:[
+            ["Treble","High"],
+            ["Bass","Low"],
+            ["Quarter","1 beat"],
+            ["Half","2 beats"],
+            ["Whole","4 beats"],
+            ["Sharp","#"],
+            ["Flat","b"],
+            ["Major","Happy"],
+            ["Minor","Sad"]
+        ]
+    },
+    18:{
+        theme:"Geography",
+        pairs:[
+            ["Mountain","High"],
+            ["River","Flows"],
+            ["Desert","Dry"],
+            ["Ocean","Salt"],
+            ["Forest","Trees"],
+            ["Lake","Fresh"],
+            ["Valley","Low"],
+            ["Plain","Flat"],
+            ["Volcano","Lava"]
+        ]
+    },
+    19:{
+        theme:"Logic Terms",
+        pairs:[
+            ["Premise","Start"],
+            ["Conclusion","End"],
+            ["Deduction","Specific"],
+            ["Induction","General"],
+            ["Syllogism","3 parts"],
+            ["Paradox","Contradiction"],
+            ["Fallacy","Error"],
+            ["Axiom","Self-evident"],
+            ["Theorem","Proven"]
+        ]
+    },
+    20:{
+        theme:"Constants",
+        pairs:[
+            ["Pi","3.14"],
+            ["Euler","2.718"],
+            ["Golden","1.618"],
+            ["Root 2","1.414"],
+            ["Speed of Light","3e8 m/s"],
+            ["Gravity","9.8 m/s^2"],
+            ["Avogadro","6e23"],
+            ["Planck","6.6e-34"],
+            ["Bohr","0.529e-10"]
+        ]
+    },
+    21:{
+        theme:"Literary Devices",
+        pairs:[
+            ["Metaphor","Direct"],
+            ["Simile","Like/As"],
+            ["Personify","Human"],
+            ["Hyperbole","Exaggerate"],
+            ["Irony","Opposite"],
+            ["Alliteration","Same sound"],
+            ["Onomatopoeia","Sound word"],
+            ["Oxymoron","Contradict"],
+            ["Symbolism","Represents"],
+            ["Foreshadow","Hint"]
+        ]
+    },
+    22:{
+        theme:"Cell Biology",
+        pairs:[
+            ["Nucleus","DNA"],
+            ["Mitochondria","Energy"],
+            ["Ribosome","Protein"],
+            ["Membrane","Barrier"],
+            ["Cytoplasm","Fluid"],
+            ["Golgi","Package"],
+            ["Lysosome","Digest"],
+            ["Vacuole","Store"],
+            ["Chloroplast","Photosynthesis"],
+            ["Centriole","Division"]
+        ]
+    },
+    23:{
+        theme:"AI Concepts",
+        pairs:[
+            ["ML","Learns"],
+            ["Neural","Brain-like"],
+            ["NLP","Language"],
+            ["Vision","Images"],
+            ["Robotics","Physical"],
+            ["Expert","Knowledge"],
+            ["Genetic","Evolution"],
+            ["Fuzzy","Uncertain"],
+            ["Reinforcement","Rewards"],
+            ["Deep","Layers"]
+        ]
+    },
+    24:{
+        theme:"Cryptography",
+        pairs:[
+            ["Encrypt","Encode"],
+            ["Decrypt","Decode"],
+            ["Public","Two keys"],
+            ["Private","Secret"],
+            ["Hash","One-way"],
+            ["Symmetric","Same key"],
+            ["Asymmetric","Different"],
+            ["Caesar","Shift"],
+            ["Vigenere","Keyed"],
+            ["RSA","Factorization"]
+        ]
+    },
+    25:{
+        theme:"Quantum Physics",
+        pairs:[
+            ["Photon","Light"],
+            ["Electron","Negative"],
+            ["Proton","Positive"],
+            ["Neutron","Neutral"],
+            ["Quark","Subatomic"],
+            ["Superposition","Both"],
+            ["Entanglement","Connected"],
+            ["Wave","Particle"],
+            ["Uncertainty","Cannot know"],
+            ["Tunnel","Through barrier"]
+        ]
+    },
+    26:{
+        theme:"Epistemology",
+        pairs:[
+            ["Rationalism","Reason"],
+            ["Empiricism","Experience"],
+            ["Skepticism","Doubt"],
+            ["A Priori","Independent"],
+            ["A Posteriori","Dependent"],
+            ["Justified","True belief"],
+            ["Truth","Reality"],
+            ["Knowledge","Justified truth"],
+            ["Belief","Acceptance"],
+            ["Intuition","Direct"],
+            ["Authority","Expert"],
+            ["Revelation","Divine"]
+        ]
+    },
+    27:{
+        theme:"Advanced Math",
+        pairs:[
+            ["Calculus","Change"],
+            ["Algebra","Equations"],
+            ["Geometry","Shapes"],
+            ["Trigonometry","Triangles"],
+            ["Topology","Space"],
+            ["Set Theory","Collections"],
+            ["Number Theory","Integers"],
+            ["Combinatorics","Counting"],
+            ["Probability","Chance"],
+            ["Statistics","Data"],
+            ["Logic","Reasoning"],
+            ["Graph Theory","Networks"]
+        ]
+    },
+    28:{
+        theme:"Neuroscience",
+        pairs:[
+            ["Neuron","Cell"],
+            ["Synapse","Junction"],
+            ["Cerebrum","Thought"],
+            ["Cerebellum","Balance"],
+            ["Amygdala","Emotion"],
+            ["Hippocampus","Memory"],
+            ["Thalamus","Relay"],
+            ["Hypothalamus","Homeostasis"],
+            ["Cortex","Outer"],
+            ["Medulla","Breathing"],
+            ["Axon","Transmits"],
+            ["Dendrite","Receives"]
+        ]
+    },
+    29:{
+        theme:"Astrophysics",
+        pairs:[
+            ["Black Hole","No escape"],
+            ["Supernova","Explosion"],
+            ["Dark Matter","Invisible"],
+            ["Dark Energy","Expansion"],
+            ["Redshift","Moving away"],
+            ["Neutron Star","Dense"],
+            ["White Dwarf","Faint"],
+            ["Pulsar","Pulses"],
+            ["Quasar","Bright"],
+            ["Galaxy","Star system"],
+            ["Nebula","Cloud"],
+            ["Exoplanet","Outside"]
+        ]
+    },
+    30:{
+        theme:"Complex Systems",
+        pairs:[
+            ["Chaos","Sensitive"],
+            ["Emergence","Simple to complex"],
+            ["Fractal","Self-similar"],
+            ["Feedback","Loop"],
+            ["Network","Connected"],
+            ["Adaptation","Adjusts"],
+            ["Evolution","Changes"],
+            ["Self-organization","Spontaneous"],
+            ["Bifurcation","Split"],
+            ["Attractor","Steady state"],
+            ["Phase transition","Shift"],
+            ["Criticality","Edge"]
+        ]
+    }
+};
+
+function showLoading(){
+    document.getElementById("loading").style.display="flex";
+}
+
+function hideLoading(){
+    document.getElementById("loading").style.display="none";
+}
+
+function showScreen(id){
+    document.querySelectorAll(".screen").forEach(s=>{
+        s.classList.remove("active");
+    });
+    document.getElementById(id).classList.add("active");
+}
+
+function register(){
+    let email=document.getElementById("regEmail").value;
+    let username=document.getElementById("regUsername").value;
+    let password=document.getElementById("regPassword").value;
+    let confirm=document.getElementById("regConfirm").value;
+
+    if(!email || !username || !password){
+        alert("Fill all fields");
+        return;
+    }
+
+    if(password!==confirm){
+        alert("Passwords do not match");
+        return;
+    }
+
+    let users=JSON.parse(localStorage.getItem("users")||"[]");
+
+    let exist=users.find(u=>u.username===username || u.email===email);
+
+    if(exist){
+        alert("User already exists");
+        return;
+    }
+
+    users.push({
+        email,
+        username,
+        password
+    });
+
+    localStorage.setItem("users",JSON.stringify(users));
+
+    alert("Registration successful!");
+    showScreen("loginScreen");
+}
+
+function login(){
+    let user=document.getElementById("loginUser").value;
+    let pass=document.getElementById("loginPass").value;
+
+    let users=JSON.parse(localStorage.getItem("users")||"[]");
+
+    let found=users.find(u=>
+        (u.username===user || u.email===user)
+        && u.password===pass
+    );
+
+    if(found){
+        currentUser=found.username;
+        enterMenu();
+    }else{
+        alert("Invalid credentials");
+    }
+}
+
+function guestLogin(){
+    currentUser="Guest";
+    enterMenu();
+}
+
+function enterMenu(){
+    document.getElementById("welcomeText").innerText=
+        "Welcome, "+currentUser+"!";
+    showScreen("menuScreen");
+}
+
+function logout(){
+    currentUser="Guest";
+    showScreen("loginScreen");
+}
+
+function startGame(){
+    score=0;
+    matchedPairs=0;
+    timer=60;
+    levelComplete=false;
+
+    updateInfo();
+
+    showScreen("gameScreen");
+
+    loadLevel(level);
+
+    clearInterval(interval);
+
+    interval=setInterval(()=>{
+        timer--;
+        updateInfo();
+
+        if(timer<=0){
+            clearInterval(interval);
+            alert("Time's up!");
+        }
+    },1000);
+}
+
+function updateInfo(){
+    document.getElementById("scoreBox").innerText="Score: "+score;
+    document.getElementById("timeBox").innerText="Time: "+timer;
+    document.getElementById("levelBox").innerText="Level: "+level;
+    document.getElementById("pairBox").innerText=
+        "Pairs: "+matchedPairs;
+}
+
+function loadLevel(levelNum){
+    let levelData=levels[levelNum];
+
+    levelComplete=false;
+    document.getElementById("nextBtn").disabled=true;
+
+    document.getElementById("themeBox").innerHTML=
+        "<b>"+levelData.theme+"</b>";
+
+    let cards=[];
+
+    levelData.pairs.forEach((pair,index)=>{
+        cards.push({
+            text:pair[0],
+            pair:index,
+            side:"left"
+        });
+
+        cards.push({
+            text:pair[1],
+            pair:index,
+            side:"right"
+        });
+    });
+
+    cards.sort(()=>Math.random()-0.5);
+
+    const grid=document.getElementById("cardGrid");
+    grid.innerHTML="";
+
+    cards.forEach(card=>{
+        let div=document.createElement("div");
+        div.className="card";
+        div.innerText=card.text;
+
+        div.onclick=()=>selectCard(div,card);
+
+        grid.appendChild(div);
+    });
+}
+
+function selectCard(element,card){
+
+    if(element.classList.contains("matched")) return;
+
+    if(!selectedCard){
+        selectedCard={element,card};
+        element.classList.add("selected");
+        return;
+    }
+
+    if(selectedCard.element===element) return;
+
+    let first=selectedCard;
+
+    if(
+        first.card.pair===card.pair &&
+        first.card.side!==card.side
+    ){
+
+        first.element.classList.remove("selected");
+
+        first.element.classList.add("matched");
+        element.classList.add("matched");
+
+        matchedPairs++;
+        score+=100;
+
+        updateInfo();
+
+        if(matchedPairs===levels[level].pairs.length){
+
+            clearInterval(interval);
+            levelComplete=true;
+            if(level < 30){
+                document.getElementById("nextBtn").disabled=false;
+            }
+
+            score += timer*3;
+
+            saveScore();
+
+            setTimeout(()=>{
+                if(level < 30){
+                    alert("Level Complete!\nFinal Score: "+score+"\nPress NEXT to continue.");
+                } else {
+                    alert("Final Level Complete!\nFinal Score: "+score);
+                    showScreen("menuScreen");
+                }
+            },300);
+        }
+
+    }else{
+
+        score=Math.max(0,score-25);
+
+        first.element.classList.remove("selected");
+
+        first.element.classList.add("wrong");
+        element.classList.add("wrong");
+
+        setTimeout(()=>{
+            first.element.classList.remove("wrong");
+            element.classList.remove("wrong");
+        },500);
+
+        updateInfo();
+    }
+
+    selectedCard=null;
+}
+
+function nextLevel(){
+    if(!levelComplete){
+        alert("Complete the current level before moving next.");
+        return;
+    }
+
+    if(level >= 30){
+        alert("You have completed all levels.");
+        return;
+    }
+
+    level++;
+    matchedPairs = 0;
+    timer = 60;
+    levelComplete=false;
+    document.getElementById("nextBtn").disabled=true;
+    updateInfo();
+    loadLevel(level);
+    clearInterval(interval);
+    interval = setInterval(()=>{
+        timer--;
+        updateInfo();
+
+        if(timer<=0){
+            clearInterval(interval);
+            alert("Time's up!");
+        }
+    },1000);
+}
+
+function resetLevel(){
+    startGame();
+}
+
+function backMenu(){
+    clearInterval(interval);
+    showScreen("menuScreen");
+}
+
+function saveScore(){
+    let board=JSON.parse(localStorage.getItem("leaderboard")||"[]");
+
+    board.push({
+        user:currentUser,
+        score:score
+    });
+
+    board.sort((a,b)=>b.score-a.score);
+
+    localStorage.setItem("leaderboard",JSON.stringify(board));
+}
+
+function showLeaderboard(){
+
+    let board=JSON.parse(localStorage.getItem("leaderboard")||"[]");
+
+    let list=document.getElementById("leaderboardList");
+
+    list.innerHTML="";
+
+    if(board.length===0){
+        list.innerHTML="<p>No scores yet.</p>";
+    }
+
+    board.slice(0,10).forEach((item,index)=>{
+
+        let row=document.createElement("div");
+        row.className="leaderboard-item";
+
+        row.innerHTML=`
+            <span>#${index+1}</span>
+            <span>${item.user}</span>
+            <span>${item.score}</span>
+        `;
+
+        list.appendChild(row);
+    });
+
+    showScreen("leaderboardScreen");
+}
+</script>
+
+</body>
+</html>
